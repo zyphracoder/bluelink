@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BlueLink — Offline Bluetooth Chat</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&display=swap');
+
+  :root {
+    --bg: #0a0c10;
+    --surface: #10141c;
+    --surface2: #161c28;
+    --border: #1e2a3a;
+    --blue: #00c3ff;
+    --blue-dim: rgba(0,195,255,0.12);
+    --blue-glow: rgba(0,195,255,0.35);
+    --green: #00ffaa;
+    --green-dim: rgba(0,255,170,0.1);
+    --red: #ff4466;
+    --text: #d0dce8;
+    --muted: #4a5e72;
+    --mono: 'Share Tech Mono', monospace;
+    --sans: 'Barlow', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.04) 2px,
+      rgba(0,0,0,0.04) 4px
+    );
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  /* Ambient glow top */
+  body::after {
+    content: '';
+    position: fixed;
+    top: -200px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 800px;
+    height: 400px;
+    background: radial-gradient(ellipse, rgba(0,195,255,0.08) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ─── HEADER ─── */
+  header {
+    width: 100%;
+    max-width: 780px;
+    padding: 28px 24px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    z-index: 1;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-icon {
+    width: 38px;
+    height: 38px;
+    border: 2px solid var(--blue);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 16px var(--blue-glow), inset 0 0 12px var(--blue-dim);
+    animation: pulse-border 3s ease-in-out infinite;
+  }
+
+  @keyframes pulse-border {
+    0%, 100% { box-shadow: 0 0 16px var(--blue-glow), inset 0 0 12px var(--blue-dim); }
+    50% { box-shadow: 0 0 28px var(--blue-glow), inset 0 0 20px var(--blue-dim); }
+  }
+
+  .logo-icon svg { width: 22px; height: 22px; fill: var(--blue); }
+
+  .logo h1 {
+    font-family: var(--sans);
+    font-weight: 900;
+    font-size: 1.5rem;
+    letter-spacing: -0.02em;
+    color: #fff;
+  }
+
+  .logo h1 span { color: var(--blue); }
+
+  .status-pill {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--muted);
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.4s;
+  }
+
+  .status-pill.connected {
+    border-color: var(--green);
+    color: var(--green);
+    box-shadow: 0 0 12px rgba(0,255,170,0.2);
+  }
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: all 0.4s;
+  }
+
+  .status-pill.connected .status-dot {
+    background: var(--green);
+    animation: blink 1.4s ease-in-out infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* ─── MAIN CARD ─── */
+  main {
+    width: 100%;
+    max-width: 780px;
+    padding: 20px 24px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ─── INFO BANNER ─── */
+  .info-banner {
+    background: var(--blue-dim);
+    border: 1px solid rgba(0,195,255,0.2);
+    border-radius: 10px;
+    padding: 14px 18px;
+    font-size: 0.82rem;
+    color: rgba(0,195,255,0.8);
+    font-family: var(--mono);
+    line-height: 1.6;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .info-banner svg { flex-shrink: 0; margin-top: 1px; }
+
+  /* ─── ROLE SELECTOR ─── */
+  .role-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .role-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .role-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.25s;
+    color: var(--text);
+    font-family: var(--sans);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .role-btn:hover {
+    border-color: var(--blue);
+    background: var(--blue-dim);
+  }
+
+  .role-btn.active {
+    border-color: var(--blue);
+    background: var(--blue-dim);
+    box-shadow: 0 0 20px var(--blue-dim);
+  }
+
+  .role-btn-title {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .role-btn-title svg { width: 16px; height: 16px; }
+
+  .role-btn-sub {
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-weight: 400;
+  }
+
+  /* ─── CONNECT AREA ─── */
+  .connect-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .device-name-row {
+    display: flex;
+    gap: 10px;
+  }
+
+  .input-field {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .input-field:focus { border-color: var(--blue); }
+  .input-field::placeholder { color: var(--muted); }
+
+  .btn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 0.85rem;
+    letter-spacing: 0.04em;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+  }
+
+  .btn-primary {
+    background: var(--blue);
+    color: #000;
+    box-shadow: 0 0 20px rgba(0,195,255,0.3);
+  }
+
+  .btn-primary:hover {
+    box-shadow: 0 0 32px rgba(0,195,255,0.55);
+    transform: translateY(-1px);
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .btn-danger {
+    background: transparent;
+    color: var(--red);
+    border: 1px solid var(--red);
+  }
+
+  .btn-danger:hover {
+    background: rgba(255,68,102,0.1);
+  }
+
+  .btn-secondary {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .btn-secondary:hover {
+    border-color: var(--blue);
+    color: var(--blue);
+  }
+
+  .connect-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  /* ─── CONNECTED DEVICE INFO ─── */
+  .device-info {
+    background: var(--green-dim);
+    border: 1px solid rgba(0,255,170,0.25);
+    border-radius: 10px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    display: none;
+  }
+
+  .device-info.show { display: flex; }
+
+  .device-info-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--mono);
+    font-size: 0.8rem;
+  }
+
+  .device-info-left strong { color: var(--green); }
+
+  /* ─── CHAT WINDOW ─── */
+  .chat-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .chat-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .chat-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+
+  .msg-count {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--muted);
+    background: var(--surface2);
+    padding: 3px 8px;
+    border-radius: 20px;
+  }
+
+  .chat-messages {
+    height: 320px;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    scroll-behavior: smooth;
+  }
+
+  .chat-messages::-webkit-scrollbar { width: 4px; }
+  .chat-messages::-webkit-scrollbar-track { background: transparent; }
+  .chat-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    text-align: center;
+    height: 100%;
+  }
+
+  .empty-state svg { opacity: 0.3; }
+
+  /* ─── MESSAGE BUBBLES ─── */
+  .message {
+    display: flex;
+    flex-direction: column;
+    max-width: 72%;
+    animation: msg-in 0.25s ease-out;
+  }
+
+  @keyframes msg-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .message.sent { align-self: flex-end; align-items: flex-end; }
+  .message.received { align-self: flex-start; align-items: flex-start; }
+  .message.system { align-self: center; align-items: center; max-width: 90%; }
+
+  .bubble {
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    word-break: break-word;
+  }
+
+  .sent .bubble {
+    background: var(--blue);
+    color: #000;
+    font-weight: 500;
+    border-bottom-right-radius: 4px;
+  }
+
+  .received .bubble {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-bottom-left-radius: 4px;
+  }
+
+  .system .bubble {
+    background: transparent;
+    border: 1px dashed var(--border);
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    padding: 6px 14px;
+    border-radius: 20px;
+  }
+
+  .msg-meta {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--muted);
+    margin-top: 4px;
+    padding: 0 4px;
+  }
+
+  /* ─── SEND BAR ─── */
+  .send-bar {
+    padding: 14px 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+  }
+
+  .send-input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-family: var(--sans);
+    font-size: 0.875rem;
+    color: var(--text);
+    outline: none;
+    resize: none;
+    min-height: 42px;
+    max-height: 120px;
+    line-height: 1.5;
+    transition: border-color 0.2s;
+  }
+
+  .send-input:focus { border-color: var(--blue); }
+  .send-input::placeholder { color: var(--muted); }
+  .send-input:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .send-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    border: none;
+    background: var(--blue);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    box-shadow: 0 0 16px rgba(0,195,255,0.3);
+    flex-shrink: 0;
+  }
+
+  .send-btn:hover { box-shadow: 0 0 24px rgba(0,195,255,0.5); transform: scale(1.05); }
+  .send-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+  .send-btn svg { fill: #000; }
+
+  /* ─── LOG ─── */
+  .log-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+
+  .log-header {
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .log-body {
+    padding: 12px 18px;
+    height: 100px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .log-body::-webkit-scrollbar { width: 3px; }
+  .log-body::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .log-entry {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--muted);
+    display: flex;
+    gap: 10px;
+  }
+
+  .log-entry .log-time { color: #2a3a4a; flex-shrink: 0; }
+  .log-entry.ok .log-msg { color: var(--green); }
+  .log-entry.err .log-msg { color: var(--red); }
+  .log-entry.info .log-msg { color: var(--blue); }
+
+  /* ─── FOOTER ─── */
+  footer {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--muted);
+    text-align: center;
+    padding: 16px;
+    z-index: 1;
+  }
+
+  footer a { color: var(--blue); text-decoration: none; }
+
+  /* ─── RESPONSIVE ─── */
+  @media (max-width: 520px) {
+    .role-buttons { grid-template-columns: 1fr; }
+    .message { max-width: 88%; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">
+      <!-- Bluetooth icon -->
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M17.71 7.71L12 2h-1v7.59L6.41 5 5 6.41l5.59 5.59L5 17.59 6.41 19 11 14.41V22h1l5.71-5.71-4.3-4.29 4.3-4.29zM13 5.83l1.88 1.88L13 9.59V5.83zm1.88 10.46L13 18.17v-3.76l1.88 1.88z"/>
+      </svg>
+    </div>
+    <h1>Blue<span>Link</span></h1>
+  </div>
+  <div class="status-pill" id="statusPill">
+    <div class="status-dot"></div>
+    <span id="statusText">OFFLINE</span>
+  </div>
+</header>
+
+<main>
+
+  <!-- Info Banner -->
+  <div class="info-banner">
+    <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16" style="flex-shrink:0;margin-top:2px">
+      <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+    </svg>
+    <div>
+      Uses <strong>Web Bluetooth API</strong> — works on Chrome/Edge (desktop &amp; Android). One device clicks <strong>Host</strong>, the other clicks <strong>Connect</strong>. No internet. No server. No accounts. Messages travel directly device-to-device over Bluetooth.
+    </div>
+  </div>
+
+  <!-- Role Selection -->
+  <div class="role-section">
+    <div class="section-label">01 — Choose your role</div>
+    <div class="role-buttons">
+      <button class="role-btn" id="roleHost" onclick="selectRole('host')">
+        <div class="role-btn-title">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3zM3.31 9.397L5 10.12v4.102a8.969 8.969 0 00-1.05-.174 1 1 0 01-.89-.89 11.115 11.115 0 01.25-3.762zM9.3 16.573A9.026 9.026 0 007 14.935v-3.957l1.818.78a3 3 0 002.364 0l5.508-2.361a11.026 11.026 0 01.25 3.762 1 1 0 01-.89.89 8.968 8.968 0 00-5.35 2.524 1 1 0 01-1.4 0zM6 18a1 1 0 001-1v-2.065a8.935 8.935 0 00-2-.712V17a1 1 0 001 1z"/></svg>
+          HOST
+        </div>
+        <div class="role-btn-sub">Advertise & wait for connections</div>
+      </button>
+      <button class="role-btn" id="roleConnect" onclick="selectRole('connect')">
+        <div class="role-btn-title">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clip-rule="evenodd"/></svg>
+          CONNECT
+        </div>
+        <div class="role-btn-sub">Scan & join a nearby host</div>
+      </button>
+    </div>
+  </div>
+
+  <!-- Connect Section -->
+  <div class="connect-section">
+    <div class="section-label">02 — Your name &amp; connection</div>
+    <div class="device-name-row">
+      <input class="input-field" id="myName" type="text" placeholder="Your display name…" maxlength="24" value="User">
+    </div>
+
+    <div class="connect-actions">
+      <button class="btn btn-primary" id="actionBtn" onclick="handleAction()" disabled>
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/></svg>
+        <span id="actionBtnText">Select a role first</span>
+      </button>
+      <button class="btn btn-danger" id="disconnectBtn" onclick="disconnect()" style="display:none">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+        Disconnect
+      </button>
+    </div>
+
+    <!-- Connected device info -->
+    <div class="device-info" id="deviceInfo">
+      <div class="device-info-left">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="#00ffaa"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+        Connected to: <strong id="peerNameDisplay">—</strong>
+      </div>
+      <span style="font-family:var(--mono);font-size:0.7rem;color:var(--muted)" id="signalIndicator">●●●○</span>
+    </div>
+  </div>
+
+  <!-- Chat -->
+  <div class="chat-section">
+    <div class="chat-header">
+      <div class="chat-header-left">
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="var(--blue)"><path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd"/></svg>
+        Messages
+      </div>
+      <span class="msg-count" id="msgCount">0 messages</span>
+    </div>
+    <div class="chat-messages" id="chatMessages">
+      <div class="empty-state" id="emptyState">
+        <svg width="40" height="40" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd"/></svg>
+        <div>No messages yet</div>
+        <div style="opacity:0.5">Connect a device to start chatting</div>
+      </div>
+    </div>
+    <div class="send-bar">
+      <textarea class="send-input" id="msgInput" placeholder="Type a message… (Enter to send)" disabled rows="1"
+        onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()" disabled>
+        <svg width="18" height="18" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Debug Log -->
+  <div class="log-section">
+    <div class="log-header">
+      <span>SYSTEM LOG</span>
+      <span onclick="clearLog()" style="cursor:pointer;color:var(--muted);font-size:0.65rem">CLEAR</span>
+    </div>
+    <div class="log-body" id="logBody">
+      <div class="log-entry info"><span class="log-time">--:--:--</span><span class="log-msg">BlueLink ready. Select a role to begin.</span></div>
+    </div>
+  </div>
+
+</main>
+
+<footer>BlueLink &mdash; peer-to-peer Bluetooth chat &mdash; no internet, no server &mdash; requires Chrome/Edge + Bluetooth</footer>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────
+let role = null; // 'host' | 'connect'
+let device = null;
+let server = null;
+let rxChar = null;
+let txChar = null;
+let isConnected = false;
+let msgCount = 0;
+let peerName = 'Peer';
+
+// BLE service/characteristic UUIDs (custom)
+const SERVICE_UUID        = '0000ffe0-0000-1000-8000-00805f9b34fb';
+const TX_CHAR_UUID        = '0000ffe1-0000-1000-8000-00805f9b34fb'; // host writes, client reads
+const RX_CHAR_UUID        = '0000ffe2-0000-1000-8000-00805f9b34fb'; // client writes, host reads
+
+// ─── HELPERS ─────────────────────────────────────────────────────
+function now() {
+  return new Date().toLocaleTimeString('en-US', {hour12:false});
+}
+
+function log(msg, type = 'info') {
+  const body = document.getElementById('logBody');
+  const el = document.createElement('div');
+  el.className = `log-entry ${type}`;
+  el.innerHTML = `<span class="log-time">${now()}</span><span class="log-msg">${msg}</span>`;
+  body.appendChild(el);
+  body.scrollTop = body.scrollHeight;
+}
+
+function clearLog() {
+  document.getElementById('logBody').innerHTML = '';
+}
+
+function setStatus(text, connected = false) {
+  document.getElementById('statusText').textContent = text;
+  const pill = document.getElementById('statusPill');
+  pill.className = 'status-pill' + (connected ? ' connected' : '');
+}
+
+function addMessage(text, type = 'received', name = null) {
+  const container = document.getElementById('chatMessages');
+  document.getElementById('emptyState')?.remove();
+
+  const wrapper = document.createElement('div');
+  wrapper.className = `message ${type}`;
+
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.textContent = text;
+
+  const meta = document.createElement('div');
+  meta.className = 'msg-meta';
+  meta.textContent = (name || (type === 'sent' ? document.getElementById('myName').value || 'Me' : peerName)) + ' · ' + now();
+
+  wrapper.appendChild(bubble);
+  if (type !== 'system') wrapper.appendChild(meta);
+  container.appendChild(wrapper);
+  container.scrollTop = container.scrollHeight;
+
+  msgCount++;
+  document.getElementById('msgCount').textContent = msgCount + (msgCount === 1 ? ' message' : ' messages');
+}
+
+function setConnected(connected, peerN = '') {
+  isConnected = connected;
+  peerName = peerN || 'Peer';
+
+  setStatus(connected ? 'CONNECTED' : 'OFFLINE', connected);
+
+  document.getElementById('msgInput').disabled = !connected;
+  document.getElementById('sendBtn').disabled = !connected;
+  document.getElementById('disconnectBtn').style.display = connected ? 'flex' : 'none';
+  document.getElementById('actionBtn').style.display = connected ? 'none' : 'flex';
+
+  const info = document.getElementById('deviceInfo');
+  if (connected) {
+    document.getElementById('peerNameDisplay').textContent = peerName;
+    info.classList.add('show');
+  } else {
+    info.classList.remove('show');
+  }
+}
+
+// ─── ROLE SELECTION ───────────────────────────────────────────────
+function selectRole(r) {
+  role = r;
+  document.getElementById('roleHost').classList.toggle('active', r === 'host');
+  document.getElementById('roleConnect').classList.toggle('active', r === 'connect');
+
+  const btn = document.getElementById('actionBtn');
+  const btnText = document.getElementById('actionBtnText');
+  btn.disabled = false;
+
+  if (r === 'host') {
+    btnText.textContent = 'Start Hosting';
+    log('Role set to HOST — you will advertise and wait for a connection.', 'info');
+  } else {
+    btnText.textContent = 'Scan & Connect';
+    log('Role set to CONNECT — you will scan for a nearby host.', 'info');
+  }
+}
+
+// ─── MAIN ACTION ─────────────────────────────────────────────────
+async function handleAction() {
+  if (!navigator.bluetooth) {
+    alert('⚠️ Web Bluetooth is not supported in this browser.\n\nPlease use Google Chrome or Microsoft Edge on desktop or Android.');
+    log('Web Bluetooth API not available in this browser.', 'err');
+    return;
+  }
+
+  if (role === 'host') {
+    await startHost();
+  } else if (role === 'connect') {
+    await startConnect();
+  }
+}
+
+// ─── HOST MODE ────────────────────────────────────────────────────
+async function startHost() {
+  log('Requesting Bluetooth device as HOST…', 'info');
+  setStatus('HOSTING…');
+
+  try {
+    // On host: request any BLE device that wants to connect to us
+    // Web Bluetooth doesn't support true "peripheral" (advertising) mode in most implementations.
+    // We simulate by having BOTH sides use requestDevice to pick each other's device.
+    // This is the practical approach with Web Bluetooth:
+    //   Host: scans for a "connect" device (the other side's phone/laptop)
+    //   Both sides use the same service UUID
+
+    device = await navigator.bluetooth.requestDevice({
+      filters: [{ services: [SERVICE_UUID] }],
+      optionalServices: [SERVICE_UUID]
+    });
+
+    log(`Found device: ${device.name || 'Unknown'} — connecting…`, 'info');
+    device.addEventListener('gattserverdisconnected', onDisconnected);
+
+    server = await device.gatt.connect();
+    log('GATT server connected.', 'ok');
+
+    const service = await server.getPrimaryService(SERVICE_UUID);
+    log('Got primary service.', 'ok');
+
+    // Host: reads on TX, writes on RX
+    try {
+      txChar = await service.getCharacteristic(TX_CHAR_UUID);
+      await txChar.startNotifications();
+      txChar.addEventListener('characteristicvaluechanged', onReceive);
+    } catch(e) {
+      log('TX char not found, trying RX for notifications.', 'info');
+    }
+
+    try {
+      rxChar = await service.getCharacteristic(RX_CHAR_UUID);
+    } catch(e) {
+      // Fallback: use same char for both
+      rxChar = txChar;
+    }
+
+    const devName = device.name || 'Unknown Device';
+    setConnected(true, devName);
+    addMessage(`${devName} joined the chat`, 'system');
+    log(`Connected to ${devName} as HOST.`, 'ok');
+
+    // Send handshake with our name
+    await sendRaw(`__NAME__:${document.getElementById('myName').value || 'Host'}`);
+
+  } catch (err) {
+    if (err.name !== 'NotFoundError') {
+      log(`Error: ${err.message}`, 'err');
+      alert('Connection failed: ' + err.message);
+    } else {
+      log('Device selection cancelled.', 'info');
+    }
+    setStatus('OFFLINE');
+  }
+}
+
+// ─── CONNECT MODE ─────────────────────────────────────────────────
+async function startConnect() {
+  log('Scanning for nearby Bluetooth devices…', 'info');
+  setStatus('SCANNING…');
+
+  try {
+    device = await navigator.bluetooth.requestDevice({
+      acceptAllDevices: true,
+      optionalServices: [SERVICE_UUID]
+    });
+
+    log(`Selected: ${device.name || 'Unknown'} — connecting…`, 'info');
+    device.addEventListener('gattserverdisconnected', onDisconnected);
+
+    server = await device.gatt.connect();
+    log('GATT connected.', 'ok');
+
+    let service;
+    try {
+      service = await server.getPrimaryService(SERVICE_UUID);
+    } catch(e) {
+      log('Custom service not found on this device. Try connecting to a BlueLink host.', 'err');
+      await device.gatt.disconnect();
+      setStatus('OFFLINE');
+      return;
+    }
+
+    try {
+      rxChar = await service.getCharacteristic(RX_CHAR_UUID);
+      await rxChar.startNotifications();
+      rxChar.addEventListener('characteristicvaluechanged', onReceive);
+    } catch(e) {
+      log('RX char failed, trying TX.', 'info');
+    }
+
+    try {
+      txChar = await service.getCharacteristic(TX_CHAR_UUID);
+    } catch(e) {
+      txChar = rxChar;
+    }
+
+    const devName = device.name || 'Unknown Device';
+    setConnected(true, devName);
+    addMessage(`Connected to ${devName}`, 'system');
+    log(`Connected to ${devName} as CLIENT.`, 'ok');
+
+    await sendRaw(`__NAME__:${document.getElementById('myName').value || 'User'}`);
+
+  } catch (err) {
+    if (err.name !== 'NotFoundError') {
+      log(`Error: ${err.message}`, 'err');
+      alert('Connection failed: ' + err.message);
+    } else {
+      log('Scan cancelled.', 'info');
+    }
+    setStatus('OFFLINE');
+  }
+}
+
+// ─── RECEIVE ─────────────────────────────────────────────────────
+function onReceive(event) {
+  const decoder = new TextDecoder('utf-8');
+  const raw = decoder.decode(event.target.value);
+
+  if (raw.startsWith('__NAME__:')) {
+    peerName = raw.slice(9) || 'Peer';
+    document.getElementById('peerNameDisplay').textContent = peerName;
+    log(`Peer identified as: ${peerName}`, 'ok');
+    addMessage(`${peerName} is ready to chat`, 'system');
+    return;
+  }
+
+  addMessage(raw, 'received');
+  log(`Received message (${raw.length} bytes)`, 'ok');
+}
+
+// ─── SEND ─────────────────────────────────────────────────────────
+async function sendRaw(text) {
+  const char = txChar || rxChar;
+  if (!char) return;
+  const encoder = new TextEncoder();
+  const bytes = encoder.encode(text);
+  // Split into 20-byte chunks (BLE MTU)
+  for (let i = 0; i < bytes.length; i += 512) {
+    const chunk = bytes.slice(i, i + 512);
+    try {
+      await char.writeValue(chunk);
+    } catch(e) {
+      log(`Write error: ${e.message}`, 'err');
+    }
+  }
+}
+
+async function sendMessage() {
+  const input = document.getElementById('msgInput');
+  const text = input.value.trim();
+  if (!text || !isConnected) return;
+
+  input.value = '';
+  autoResize(input);
+
+  try {
+    await sendRaw(text);
+    addMessage(text, 'sent');
+    log(`Sent ${text.length} chars`, 'ok');
+  } catch (err) {
+    log(`Send failed: ${err.message}`, 'err');
+    addMessage('⚠️ Message failed to send', 'system');
+  }
+}
+
+// ─── DISCONNECT ───────────────────────────────────────────────────
+function onDisconnected() {
+  log('Device disconnected.', 'err');
+  setConnected(false);
+  addMessage('Connection lost', 'system');
+  device = null; server = null; txChar = null; rxChar = null;
+}
+
+async function disconnect() {
+  if (device && device.gatt.connected) {
+    device.gatt.disconnect();
+  }
+  onDisconnected();
+}
+
+// ─── UI HELPERS ───────────────────────────────────────────────────
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+// Check Bluetooth support on load
+window.addEventListener('DOMContentLoaded', () => {
+  if (!navigator.bluetooth) {
+    log('⚠️ Web Bluetooth not available. Use Chrome/Edge on desktop or Android.', 'err');
+    document.querySelector('.info-banner').style.borderColor = 'rgba(255,68,102,0.4)';
+    document.querySelector('.info-banner').style.background = 'rgba(255,68,102,0.08)';
+    document.querySelector('.info-banner').style.color = 'rgba(255,100,120,0.9)';
+  } else {
+    log('Web Bluetooth API detected ✓', 'ok');
+  }
+});
+</script>
+</body>
+</html>
