@@ -2,799 +2,1082 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NearLink — Offline P2P Chat</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>DropChat — Offline P2P</title>
+<!-- QR generator -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<!-- QR scanner -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;900&family=DM+Mono:wght@400;500&display=swap');
 
 :root {
-  --bg: #080b0f;
-  --s1: #0e1318;
-  --s2: #141b24;
-  --s3: #1a2330;
-  --border: #1f2d3d;
-  --border2: #253345;
-  --accent: #3dd9eb;
-  --accent2: #7b5ea7;
-  --green: #2ecc8a;
-  --yellow: #f0c040;
-  --red: #e8445a;
-  --text: #c8d8e8;
-  --muted: #445566;
-  --muted2: #334455;
-  --sans: 'Syne', sans-serif;
-  --mono: 'JetBrains Mono', monospace;
+  --bg:      #07090d;
+  --s1:      #0c1017;
+  --s2:      #111820;
+  --s3:      #17212c;
+  --border:  #1c2a38;
+  --border2: #243344;
+  --cyan:    #00e5ff;
+  --cyan2:   rgba(0,229,255,.12);
+  --cyan3:   rgba(0,229,255,.04);
+  --green:   #00e096;
+  --orange:  #ff8c42;
+  --red:     #ff4466;
+  --text:    #bdd0e0;
+  --white:   #e8f4ff;
+  --muted:   #3d5468;
+  --sans:    'Outfit', sans-serif;
+  --mono:    'DM Mono', monospace;
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--sans);
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+html, body {
+  width: 100%; min-height: 100vh;
+  background: var(--bg); color: var(--text);
+  font-family: var(--sans); overflow-x: hidden;
 }
 
-/* grid bg */
+/* ── NOISE TEXTURE ── */
 body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(61,217,235,0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(61,217,235,0.03) 1px, transparent 1px);
-  background-size: 40px 40px;
-  pointer-events: none;
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  background-size: 256px 256px; opacity: .5;
 }
 
-/* top glow */
+/* ── AMBIENT GLOW ── */
 body::after {
-  content: '';
-  position: fixed;
-  top: -300px; left: 50%;
-  transform: translateX(-50%);
-  width: 900px; height: 600px;
-  background: radial-gradient(ellipse, rgba(61,217,235,0.06) 0%, transparent 65%);
-  pointer-events: none;
+  content: ''; position: fixed; pointer-events: none; z-index: 0;
+  top: -40vh; left: 50%; transform: translateX(-50%);
+  width: 140vw; height: 80vh;
+  background: radial-gradient(ellipse, rgba(0,229,255,.05) 0%, transparent 65%);
+}
+
+/* ── LAYOUT ── */
+#app {
+  position: relative; z-index: 1;
+  min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center;
 }
 
 /* ── HEADER ── */
 header {
-  width: 100%; max-width: 820px;
-  padding: 24px 20px 0;
+  width: 100%; max-width: 900px;
+  padding: 24px 24px 0;
   display: flex; align-items: center; justify-content: space-between;
-  position: relative; z-index: 2;
 }
 
-.brand { display: flex; align-items: center; gap: 12px; }
-.brand-mark {
-  width: 40px; height: 40px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, rgba(61,217,235,0.15), rgba(123,94,167,0.15));
-  border: 1px solid rgba(61,217,235,0.3);
+.logo {
+  display: flex; align-items: center; gap: 11px;
+}
+.logo-icon {
+  width: 36px; height: 36px; border-radius: 9px;
+  background: linear-gradient(135deg, rgba(0,229,255,.18), rgba(0,224,150,.1));
+  border: 1px solid rgba(0,229,255,.3);
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 0 20px rgba(61,217,235,0.15);
+  box-shadow: 0 0 18px rgba(0,229,255,.15);
 }
-.brand-mark svg { width: 22px; height: 22px; }
-.brand h1 { font-size: 1.4rem; font-weight: 800; letter-spacing: -0.03em; color: #fff; }
-.brand h1 span { color: var(--accent); }
+.logo-icon svg { width: 20px; height: 20px; }
+.logo h1 {
+  font-size: 1.35rem; font-weight: 900;
+  letter-spacing: -.04em; color: var(--white);
+}
+.logo h1 em { font-style: normal; color: var(--cyan); }
 
-.conn-badge {
-  display: flex; align-items: center; gap: 7px;
-  font-family: var(--mono); font-size: 0.68rem;
+.status-chip {
+  font-family: var(--mono); font-size: .65rem;
   padding: 5px 13px; border-radius: 20px;
-  border: 1px solid var(--border2);
-  color: var(--muted);
-  transition: all 0.4s;
+  border: 1px solid var(--border2); color: var(--muted);
+  display: flex; align-items: center; gap: 6px;
+  transition: all .4s;
 }
-.conn-badge.live {
-  border-color: var(--green); color: var(--green);
-  box-shadow: 0 0 12px rgba(46,204,138,0.2);
-}
-.conn-dot {
+.status-chip.on { border-color: var(--green); color: var(--green); box-shadow: 0 0 12px rgba(0,224,150,.2); }
+.status-chip .pip {
   width: 6px; height: 6px; border-radius: 50%;
-  background: var(--muted); transition: all 0.4s;
+  background: currentColor;
 }
-.conn-badge.live .conn-dot {
-  background: var(--green);
-  animation: pulse 1.5s infinite;
-}
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.25} }
+.status-chip.on .pip { animation: pip 1.4s ease-in-out infinite; }
+@keyframes pip { 0%,100%{opacity:1} 50%{opacity:.2} }
 
-/* ── MAIN ── */
+/* ── MAIN CONTENT ── */
 main {
-  width: 100%; max-width: 820px;
-  padding: 18px 20px 36px;
+  width: 100%; max-width: 900px;
+  padding: 20px 24px 40px;
   display: flex; flex-direction: column; gap: 14px;
-  position: relative; z-index: 2;
 }
 
 /* ── CARD ── */
 .card {
   background: var(--s1);
   border: 1px solid var(--border);
-  border-radius: 16px;
-  overflow: hidden;
+  border-radius: 18px; overflow: hidden;
 }
 
-.card-head {
-  padding: 13px 18px;
-  border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: space-between;
+/* ── NOTICE ── */
+.notice {
+  padding: 13px 17px; border-radius: 12px;
+  font-family: var(--mono); font-size: .72rem; line-height: 1.6;
+  display: flex; gap: 10px; align-items: flex-start;
 }
-.card-title {
-  font-family: var(--mono); font-size: 0.65rem;
-  letter-spacing: 0.12em; color: var(--muted);
-  text-transform: uppercase;
+.notice.info { background: rgba(0,229,255,.06); border: 1px solid rgba(0,229,255,.2); color: rgba(0,229,255,.85); }
+.notice.warn { background: rgba(255,140,66,.06); border: 1px solid rgba(255,140,66,.25); color: rgba(255,140,66,.9); }
+.notice.good { background: rgba(0,224,150,.06); border: 1px solid rgba(0,224,150,.25); color: rgba(0,224,150,.9); }
+.notice.bad  { background: rgba(255,68,102,.06); border: 1px solid rgba(255,68,102,.25); color: rgba(255,68,102,.9); }
+
+/* ── MODE SELECT ── */
+#modeScreen {
+  display: flex; flex-direction: column; gap: 14px;
+}
+
+.mode-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+}
+
+.mode-card {
+  background: var(--s1); border: 1px solid var(--border);
+  border-radius: 18px; padding: 28px 22px;
+  cursor: pointer; transition: all .25s;
+  display: flex; flex-direction: column; gap: 14px;
+  text-align: left;
+}
+.mode-card:hover {
+  border-color: var(--cyan); background: rgba(0,229,255,.04);
+  transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,229,255,.1);
+}
+.mode-icon {
+  width: 52px; height: 52px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.6rem;
+}
+.mode-card.host-card .mode-icon { background: rgba(0,229,255,.1); border: 1px solid rgba(0,229,255,.2); }
+.mode-card.scan-card .mode-icon { background: rgba(0,224,150,.1); border: 1px solid rgba(0,224,150,.2); }
+.mode-card h2 { font-size: 1.2rem; font-weight: 800; color: var(--white); letter-spacing: -.03em; }
+.mode-card p { font-family: var(--mono); font-size: .72rem; color: var(--muted); line-height: 1.55; }
+.mode-arrow {
+  margin-top: auto;
+  font-family: var(--mono); font-size: .68rem;
+  color: var(--cyan); display: flex; align-items: center; gap: 6px;
+}
+.mode-card.scan-card .mode-arrow { color: var(--green); }
+
+/* ── NAME INPUT ── */
+.name-row {
+  display: flex; gap: 10px; align-items: center;
+  background: var(--s2); border: 1px solid var(--border2);
+  border-radius: 12px; padding: 12px 16px;
+}
+.name-row label {
+  font-family: var(--mono); font-size: .65rem;
+  color: var(--muted); white-space: nowrap; letter-spacing: .08em;
+}
+.name-in {
+  flex: 1; background: transparent; border: none; outline: none;
+  font-family: var(--sans); font-size: .9rem; font-weight: 600;
+  color: var(--white); min-width: 0;
+}
+.name-in::placeholder { color: var(--muted); font-weight: 400; }
+
+/* ── HOST SCREEN ── */
+#hostScreen { display: none; flex-direction: column; gap: 14px; }
+
+.host-layout {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start;
+}
+
+.qr-panel {
+  background: var(--s1); border: 1px solid var(--border);
+  border-radius: 18px; padding: 28px 24px;
+  display: flex; flex-direction: column; align-items: center; gap: 18px;
+}
+
+.qr-label {
+  font-family: var(--mono); font-size: .65rem;
+  letter-spacing: .12em; color: var(--cyan);
+  text-transform: uppercase; text-align: center;
+}
+
+.qr-wrapper {
+  position: relative; padding: 16px;
+  background: white; border-radius: 14px;
+  box-shadow: 0 0 40px rgba(0,229,255,.2), 0 0 80px rgba(0,229,255,.1);
+}
+
+/* animated border around QR */
+.qr-wrapper::before {
+  content: ''; position: absolute; inset: -3px; border-radius: 17px;
+  background: conic-gradient(from 0deg, var(--cyan), var(--green), var(--cyan));
+  z-index: -1; animation: spin 3s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+#qrcode canvas, #qrcode img { display: block !important; border-radius: 4px; }
+
+.qr-hint {
+  font-family: var(--mono); font-size: .7rem; color: var(--muted);
+  text-align: center; line-height: 1.6;
+}
+
+.qr-refresh {
+  background: var(--s2); border: 1px solid var(--border2);
+  border-radius: 9px; padding: 8px 16px; cursor: pointer;
+  font-family: var(--mono); font-size: .68rem; color: var(--muted);
+  transition: all .2s; display: flex; align-items: center; gap: 7px;
+}
+.qr-refresh:hover { border-color: var(--cyan); color: var(--cyan); }
+
+.host-info-panel {
+  display: flex; flex-direction: column; gap: 12px;
+}
+
+.info-block {
+  background: var(--s1); border: 1px solid var(--border);
+  border-radius: 14px; padding: 18px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.info-block h3 {
+  font-size: .85rem; font-weight: 700; color: var(--white);
   display: flex; align-items: center; gap: 8px;
 }
-.card-title svg { width: 13px; height: 13px; }
-.card-body { padding: 18px; }
+.info-step {
+  font-family: var(--mono); font-size: .68rem; color: var(--muted);
+  line-height: 1.7; display: flex; flex-direction: column; gap: 5px;
+}
+.info-step span {
+  display: flex; align-items: flex-start; gap: 8px; padding: 6px 10px;
+  background: var(--s2); border-radius: 7px;
+}
+.info-step span b { color: var(--cyan); flex-shrink: 0; }
 
-/* ── HOW IT WORKS BANNER ── */
-.how-banner {
-  background: var(--s1);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 16px 18px;
-  display: flex; gap: 10px;
+.waiting-anim {
+  display: flex; align-items: center; gap: 10px;
+  font-family: var(--mono); font-size: .75rem; color: var(--cyan);
 }
-.how-steps {
-  display: flex; flex-direction: column; gap: 6px;
-  font-family: var(--mono); font-size: 0.73rem; color: var(--text);
-  line-height: 1.6;
+.dots span {
+  display: inline-block; width: 5px; height: 5px; border-radius: 50%;
+  background: var(--cyan); margin: 0 2px;
+  animation: dotpulse 1.4s ease-in-out infinite;
 }
-.how-steps strong { color: var(--accent); }
-.how-icon { color: var(--accent); flex-shrink: 0; margin-top: 2px; }
+.dots span:nth-child(2) { animation-delay: .2s; }
+.dots span:nth-child(3) { animation-delay: .4s; }
+@keyframes dotpulse { 0%,80%,100%{opacity:.2;transform:scale(.8)} 40%{opacity:1;transform:scale(1)} }
 
-/* ── TABS ── */
-.tabs {
-  display: flex; gap: 0;
-  border-bottom: 1px solid var(--border);
-}
-.tab {
-  flex: 1; padding: 13px 10px;
-  text-align: center;
-  cursor: pointer;
-  font-size: 0.82rem; font-weight: 700;
-  color: var(--muted);
-  border-bottom: 2px solid transparent;
-  transition: all 0.2s;
-  display: flex; align-items: center; justify-content: center; gap: 7px;
-}
-.tab:hover { color: var(--text); }
-.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-.tab svg { width: 14px; height: 14px; }
-.tab-badge {
-  font-family: var(--mono); font-size: 0.6rem;
-  background: var(--accent); color: #000;
-  padding: 1px 6px; border-radius: 10px;
-  display: none;
-}
-.tab-badge.show { display: inline; }
+/* ── SCAN SCREEN ── */
+#scanScreen { display: none; flex-direction: column; gap: 14px; }
 
-/* ── STEP PANELS ── */
-.panel { display: none; padding: 18px; }
-.panel.active { display: flex; flex-direction: column; gap: 14px; }
-
-/* ── STEP LABEL ── */
-.step-label {
-  font-family: var(--mono); font-size: 0.65rem;
-  letter-spacing: 0.1em; color: var(--muted);
-  text-transform: uppercase; margin-bottom: 2px;
+.scan-area {
+  position: relative; border-radius: 16px; overflow: hidden;
+  background: #000; aspect-ratio: 1;
+  max-width: 340px; width: 100%; margin: 0 auto;
+  border: 2px solid var(--border2);
 }
-
-/* ── INPUTS ── */
-.field {
-  background: var(--s2);
-  border: 1px solid var(--border2);
+.scan-area video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.scan-overlay {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+.scan-frame {
+  width: 62%; height: 62%;
+  border: 2px solid var(--green);
   border-radius: 10px;
-  padding: 11px 14px;
-  font-family: var(--mono); font-size: 0.82rem;
-  color: var(--text); outline: none;
-  transition: border-color 0.2s;
-  width: 100%;
-}
-.field:focus { border-color: var(--accent); }
-.field::placeholder { color: var(--muted2); }
-.field[readonly] { cursor: pointer; color: var(--muted); font-size: 0.72rem; }
-.field[readonly]:hover { border-color: var(--accent); }
-
-textarea.field {
-  resize: vertical; min-height: 80px;
-  font-size: 0.7rem; line-height: 1.5;
-}
-
-/* ── BUTTONS ── */
-.btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  padding: 11px 20px; border-radius: 10px; border: none;
-  font-family: var(--sans); font-weight: 700; font-size: 0.82rem;
-  cursor: pointer; transition: all 0.2s; white-space: nowrap;
-}
-.btn-accent {
-  background: var(--accent); color: #000;
-  box-shadow: 0 0 18px rgba(61,217,235,0.25);
-}
-.btn-accent:hover { box-shadow: 0 0 28px rgba(61,217,235,0.5); transform: translateY(-1px); }
-.btn-accent:disabled { opacity: 0.35; cursor: not-allowed; transform: none; box-shadow: none; }
-.btn-ghost {
-  background: var(--s2); color: var(--text);
-  border: 1px solid var(--border2);
-}
-.btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
-.btn-green {
-  background: var(--green); color: #000;
-  box-shadow: 0 0 18px rgba(46,204,138,0.2);
-}
-.btn-green:hover { box-shadow: 0 0 28px rgba(46,204,138,0.4); transform: translateY(-1px); }
-.btn-green:disabled { opacity: 0.35; cursor: not-allowed; transform: none; box-shadow: none; }
-.btn-red {
-  background: transparent; color: var(--red);
-  border: 1px solid var(--red);
-}
-.btn-red:hover { background: rgba(232,68,90,0.1); }
-
-.row { display: flex; gap: 10px; flex-wrap: wrap; }
-.row .btn { flex: 1; }
-
-/* ── OFFER/ANSWER BOX ── */
-.code-box {
+  box-shadow: 0 0 0 9999px rgba(0,0,0,.4);
   position: relative;
 }
-.copy-btn {
-  position: absolute; right: 10px; top: 8px;
-  background: var(--s3); border: 1px solid var(--border2);
-  color: var(--muted); border-radius: 7px;
-  padding: 4px 10px; font-family: var(--mono); font-size: 0.65rem;
-  cursor: pointer; transition: all 0.2s;
+/* corner decorations */
+.scan-frame::before, .scan-frame::after {
+  content: ''; position: absolute;
+  width: 20px; height: 20px;
+  border-color: var(--cyan); border-style: solid;
 }
-.copy-btn:hover { color: var(--accent); border-color: var(--accent); }
-.copy-btn.copied { color: var(--green); border-color: var(--green); }
+.scan-frame::before { top: -3px; left: -3px; border-width: 3px 0 0 3px; border-radius: 6px 0 0 0; }
+.scan-frame::after  { bottom: -3px; right: -3px; border-width: 0 3px 3px 0; border-radius: 0 0 6px 0; }
 
-/* ── STATUS ROW ── */
-.status-row {
-  background: var(--s2);
-  border: 1px solid var(--border2);
-  border-radius: 10px;
-  padding: 12px 16px;
+.scan-line {
+  position: absolute; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--green), transparent);
+  animation: scanline 2s ease-in-out infinite;
+}
+@keyframes scanline {
+  0%   { top: 0%; opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+.scan-status {
+  font-family: var(--mono); font-size: .7rem;
+  color: var(--green); text-align: center; padding: 4px 0;
+}
+
+/* ── CHAT SCREEN ── */
+#chatScreen { display: none; flex-direction: column; gap: 0; }
+
+.chat-top {
+  padding: 14px 18px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.chat-peer {
   display: flex; align-items: center; gap: 10px;
-  font-family: var(--mono); font-size: 0.75rem;
 }
-.status-row svg { flex-shrink: 0; }
-.status-row.success { border-color: rgba(46,204,138,0.4); background: rgba(46,204,138,0.06); color: var(--green); }
-.status-row.warning { border-color: rgba(240,192,64,0.4); background: rgba(240,192,64,0.05); color: var(--yellow); }
-.status-row.error { border-color: rgba(232,68,90,0.4); background: rgba(232,68,90,0.05); color: var(--red); }
-.status-row.info { border-color: rgba(61,217,235,0.3); background: rgba(61,217,235,0.05); color: var(--accent); }
+.peer-avatar {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--cyan), var(--green));
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: .85rem; color: #000;
+  flex-shrink: 0;
+}
+.peer-info { display: flex; flex-direction: column; gap: 1px; }
+.peer-name { font-weight: 700; font-size: .9rem; color: var(--white); }
+.peer-sub { font-family: var(--mono); font-size: .6rem; color: var(--green); }
 
-/* ── CHAT ── */
-.chat-wrap { display: flex; flex-direction: column; }
+.btn-disc {
+  background: transparent; border: 1px solid rgba(255,68,102,.4);
+  color: var(--red); border-radius: 8px; padding: 6px 13px;
+  font-family: var(--mono); font-size: .65rem; cursor: pointer;
+  transition: all .2s;
+}
+.btn-disc:hover { background: rgba(255,68,102,.1); }
+
 .chat-msgs {
-  height: 340px; overflow-y: auto;
-  padding: 16px; display: flex; flex-direction: column; gap: 10px;
+  height: 340px; overflow-y: auto; padding: 16px;
+  display: flex; flex-direction: column; gap: 10px;
   scroll-behavior: smooth;
 }
 .chat-msgs::-webkit-scrollbar { width: 4px; }
 .chat-msgs::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
 
-.empty {
-  flex: 1; display: flex; flex-direction: column;
+.empty-msgs {
+  height: 100%; display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   gap: 8px; text-align: center;
-  color: var(--muted); font-family: var(--mono); font-size: 0.72rem;
-  height: 100%;
+  color: var(--muted); font-family: var(--mono); font-size: .7rem;
 }
-.empty svg { opacity: 0.25; width: 44px; height: 44px; }
+.empty-msgs .big { font-size: 2rem; margin-bottom: 4px; }
 
 /* bubbles */
-.msg { display: flex; flex-direction: column; max-width: 74%; animation: fadeUp 0.22s ease-out; }
-@keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
-.msg.me { align-self: flex-end; align-items: flex-end; }
-.msg.them { align-self: flex-start; align-items: flex-start; }
-.msg.sys { align-self: center; align-items: center; max-width: 90%; }
+.msg { display: flex; flex-direction: column; max-width: 75%; animation: bubbleIn .22s ease-out; }
+@keyframes bubbleIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+.msg.me   { align-self: flex-end; align-items: flex-end; }
+.msg.them { align-self: flex-start; }
+.msg.sys  { align-self: center; max-width: 90%; align-items: center; }
 .bubble {
-  padding: 10px 14px; border-radius: 14px;
-  font-size: 0.85rem; line-height: 1.55; word-break: break-word;
+  padding: 10px 14px; border-radius: 16px;
+  font-size: .875rem; line-height: 1.55; word-break: break-word;
 }
-.me .bubble { background: var(--accent); color: #000; font-weight: 600; border-bottom-right-radius: 3px; }
-.them .bubble { background: var(--s2); border: 1px solid var(--border2); border-bottom-left-radius: 3px; }
+.me .bubble {
+  background: var(--cyan); color: #000; font-weight: 600;
+  border-bottom-right-radius: 4px;
+}
+.them .bubble {
+  background: var(--s2); border: 1px solid var(--border2);
+  border-bottom-left-radius: 4px;
+}
 .sys .bubble {
   background: transparent; border: 1px dashed var(--border2);
-  color: var(--muted); font-family: var(--mono); font-size: 0.68rem;
+  color: var(--muted); font-family: var(--mono); font-size: .65rem;
   padding: 5px 14px; border-radius: 20px;
 }
 .msg-meta {
-  font-family: var(--mono); font-size: 0.62rem;
-  color: var(--muted); margin-top: 4px; padding: 0 4px;
+  font-family: var(--mono); font-size: .6rem;
+  color: var(--muted); margin-top: 3px; padding: 0 4px;
 }
 
 /* send bar */
 .send-bar {
   padding: 12px 14px; border-top: 1px solid var(--border);
-  display: flex; gap: 10px; align-items: flex-end;
+  display: flex; gap: 9px; align-items: flex-end;
+  background: var(--s1);
 }
-.send-input {
+.send-ta {
   flex: 1; background: var(--s2); border: 1px solid var(--border2);
-  border-radius: 10px; padding: 10px 14px;
-  font-family: var(--sans); font-size: 0.875rem; color: var(--text);
+  border-radius: 12px; padding: 10px 14px;
+  font-family: var(--sans); font-size: .875rem; color: var(--white);
   outline: none; resize: none; min-height: 42px; max-height: 120px;
-  line-height: 1.5; transition: border-color 0.2s;
+  line-height: 1.5; transition: border-color .2s;
 }
-.send-input:focus { border-color: var(--accent); }
-.send-input::placeholder { color: var(--muted); }
-.send-input:disabled { opacity: 0.3; }
-.send-btn {
+.send-ta:focus { border-color: var(--cyan); }
+.send-ta::placeholder { color: var(--muted); }
+.send-ta:disabled { opacity: .3; }
+.send-ta-btn {
   width: 42px; height: 42px; flex-shrink: 0;
-  border-radius: 10px; border: none; background: var(--accent);
+  border-radius: 12px; border: none; background: var(--cyan);
   cursor: pointer; display: flex; align-items: center; justify-content: center;
-  transition: all 0.2s;
-  box-shadow: 0 0 14px rgba(61,217,235,0.25);
+  box-shadow: 0 0 16px rgba(0,229,255,.3); transition: all .2s;
 }
-.send-btn:hover { box-shadow: 0 0 24px rgba(61,217,235,0.5); transform: scale(1.06); }
-.send-btn:disabled { opacity: 0.25; cursor: not-allowed; transform: none; }
-.send-btn svg { fill: #000; width: 18px; height: 18px; }
+.send-ta-btn:hover { box-shadow: 0 0 28px rgba(0,229,255,.55); transform: scale(1.07); }
+.send-ta-btn:disabled { opacity: .25; cursor: not-allowed; transform: none; box-shadow: none; }
+.send-ta-btn svg { fill: #000; width: 18px; height: 18px; }
 
-/* peer name bar */
-.peer-bar {
-  display: none; padding: 10px 18px;
-  border-bottom: 1px solid var(--border);
-  background: rgba(46,204,138,0.05);
-  font-family: var(--mono); font-size: 0.75rem; color: var(--green);
-  align-items: center; gap: 8px;
+/* ── BACK BUTTON ── */
+.back-btn {
+  background: transparent; border: 1px solid var(--border2);
+  border-radius: 9px; padding: 7px 14px; cursor: pointer;
+  font-family: var(--mono); font-size: .68rem; color: var(--muted);
+  transition: all .2s; display: flex; align-items: center; gap: 7px;
+  align-self: flex-start;
 }
-.peer-bar.show { display: flex; }
-.peer-bar strong { font-size: 0.85rem; }
+.back-btn:hover { border-color: var(--cyan); color: var(--cyan); }
 
-/* ── QR HELPER ── */
-.qr-tip {
-  background: var(--s2); border: 1px solid var(--border2);
-  border-radius: 10px; padding: 12px 16px;
-  font-family: var(--mono); font-size: 0.72rem; color: var(--muted);
-  line-height: 1.6;
-}
-.qr-tip strong { color: var(--accent); }
-
-/* ── DIVIDER ── */
-.divider {
-  display: flex; align-items: center; gap: 12px;
-  font-family: var(--mono); font-size: 0.65rem; color: var(--muted2);
-}
-.divider::before, .divider::after {
-  content: ''; flex: 1; height: 1px; background: var(--border);
-}
-
-/* responsive */
-@media(max-width:520px){
-  .msg{max-width:88%;}
-  .row{flex-direction:column;}
-  .row .btn{flex:none;}
+/* ── RESPONSIVE ── */
+@media (max-width: 600px) {
+  .host-layout { grid-template-columns: 1fr; }
+  .mode-grid { grid-template-columns: 1fr; }
+  .msg { max-width: 87%; }
+  header { padding: 18px 16px 0; }
+  main { padding: 14px 16px 32px; }
 }
 </style>
 </head>
 <body>
+<div id="app">
 
 <header>
-  <div class="brand">
-    <div class="brand-mark">
-      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M8.5 8.5L12 5l3.5 3.5-3.5 3.5V5M8.5 15.5L12 19l3.5-3.5L12 12v7" stroke="#3dd9eb" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24" fill="none">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#00e5ff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
     </div>
-    <h1>Near<span>Link</span></h1>
+    <h1>Drop<em>Chat</em></h1>
   </div>
-  <div class="conn-badge" id="connBadge">
-    <div class="conn-dot"></div>
-    <span id="connLabel">OFFLINE</span>
+  <div class="status-chip" id="statusChip">
+    <span class="pip"></span>
+    <span id="statusLabel">OFFLINE</span>
   </div>
 </header>
 
 <main>
 
-  <!-- HOW IT WORKS -->
-  <div class="how-banner">
-    <svg class="how-icon" width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
-      <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
-    </svg>
-    <div class="how-steps">
-      Uses <strong>WebRTC</strong> — true peer-to-peer, zero internet needed.<br>
-      <strong>Same WiFi?</strong> Use the Local Network tab — automatic &amp; fast.<br>
-      <strong>No network at all?</strong> Use Manual tab — copy/paste a short code between devices.
-    </div>
-  </div>
-
-  <!-- NAME INPUT -->
-  <div class="card">
-    <div class="card-body" style="display:flex;gap:10px;align-items:center">
-      <div style="flex:1">
-        <div class="step-label">Your display name</div>
-        <input class="field" id="myName" type="text" placeholder="Enter your name…" value="User" maxlength="24" style="margin-top:6px">
-      </div>
-    </div>
-  </div>
-
-  <!-- CONNECTION CARD -->
-  <div class="card">
-    <div class="tabs">
-      <div class="tab active" id="tab-local" onclick="switchTab('local')">
-        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M17.778 8.222c-4.296-4.296-11.26-4.296-15.556 0A1 1 0 01.808 6.808c5.076-5.077 13.308-5.077 18.384 0a1 1 0 01-1.414 1.414zM14.95 11.05a7 7 0 00-9.9 0 1 1 0 01-1.414-1.414 9 9 0 0112.728 0 1 1 0 01-1.414 1.414zM12.12 13.88a3 3 0 00-4.242 0 1 1 0 01-1.415-1.415 5 5 0 017.072 0 1 1 0 01-1.415 1.415zM11 16a1 1 0 11-2 0 1 1 0 012 0z" clip-rule="evenodd"/></svg>
-        Local Network
-        <span class="tab-badge" id="badge-local">●</span>
-      </div>
-      <div class="tab" id="tab-manual" onclick="switchTab('manual')">
-        <svg viewBox="0 0 20 20" fill="currentColor"><path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"/><path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"/></svg>
-        Manual Code
-        <span class="tab-badge" id="badge-manual">●</span>
-      </div>
+  <!-- ════════════════════════════════════
+       MODE SELECT SCREEN
+  ════════════════════════════════════ -->
+  <div id="modeScreen">
+    <div class="notice info">
+      <span>📡</span>
+      <span>Fully offline P2P chat. <strong>Same WiFi network required.</strong> Laptop shows QR → phone scans it → instant connection. No internet. No server. No accounts.</span>
     </div>
 
-    <!-- LOCAL NETWORK PANEL -->
-    <div class="panel active" id="panel-local">
-      <div class="step-label">Step 1 — One device hosts, the other joins</div>
-      <div class="row">
-        <button class="btn btn-accent" id="hostBtn" onclick="startHost()">
-          <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm3.293 1.293a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 01-1.414-1.414L7.586 10 5.293 7.707a1 1 0 010-1.414zM11 12a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/></svg>
-          Start as Host
-        </button>
-        <button class="btn btn-ghost" id="joinBtn" onclick="startJoin()">
-          <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clip-rule="evenodd"/></svg>
-          Join a Host
-        </button>
-      </div>
+    <!-- Name input always visible -->
+    <div class="name-row">
+      <label>YOUR NAME</label>
+      <input class="name-in" id="myName" type="text" placeholder="Enter your name…" value="User" maxlength="24">
+    </div>
 
-      <div id="hostCodeArea" style="display:none;flex-direction:column;gap:10px">
-        <div class="step-label">Step 2 — Share this code with the other device</div>
-        <div class="code-box">
-          <textarea class="field" id="hostCodeOutput" readonly rows="4" placeholder="Generating offer…"></textarea>
-          <button class="copy-btn" id="copyHostCode" onclick="copyCode('hostCodeOutput','copyHostCode')">COPY</button>
+    <div class="mode-grid">
+      <div class="mode-card host-card" onclick="goHost()">
+        <div class="mode-icon">🖥️</div>
+        <div>
+          <h2>Host</h2>
+          <p>Laptop / Desktop<br>Generates a QR code for the other device to scan.</p>
         </div>
-        <div class="qr-tip">📲 <strong>Tip:</strong> Copy and send this code via WhatsApp, SMS, email, or even type it out. The other person pastes it in their "Join" box.</div>
-        <div class="step-label">Step 3 — Paste their answer code here</div>
-        <textarea class="field" id="hostAnswerInput" placeholder="Paste the answer code from the other device here…" rows="4"></textarea>
-        <button class="btn btn-green" id="hostFinishBtn" onclick="hostFinish()">
-          <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
-          Confirm Connection
+        <div class="mode-arrow">Show QR Code →</div>
+      </div>
+      <div class="mode-card scan-card" onclick="goScan()">
+        <div class="mode-icon">📱</div>
+        <div>
+          <h2>Join</h2>
+          <p>Mobile / Tablet<br>Scans the host's QR code to connect instantly.</p>
+        </div>
+        <div class="mode-arrow" style="color:var(--green)">Scan QR Code →</div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ════════════════════════════════════
+       HOST SCREEN
+  ════════════════════════════════════ -->
+  <div id="hostScreen">
+    <button class="back-btn" onclick="goMode()">← Back</button>
+
+    <div class="host-layout">
+
+      <!-- QR Panel -->
+      <div class="qr-panel">
+        <div class="qr-label">📡 Scan this QR code to connect</div>
+        <div class="qr-wrapper">
+          <div id="qrcode"></div>
+        </div>
+        <div class="qr-hint" id="qrHint">Generating connection code…</div>
+        <button class="qr-refresh" onclick="regenerateOffer()">
+          ↺ Regenerate
         </button>
       </div>
 
-      <div id="joinCodeArea" style="display:none;flex-direction:column;gap:10px">
-        <div class="step-label">Step 2 — Paste the host's offer code</div>
-        <textarea class="field" id="joinOfferInput" placeholder="Paste the code from the host here…" rows="4"></textarea>
-        <button class="btn btn-accent" onclick="joinGenAnswer()">
-          <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/></svg>
-          Generate Answer
-        </button>
-        <div id="joinAnswerArea" style="display:none;flex-direction:column;gap:10px">
-          <div class="step-label">Step 3 — Copy this answer &amp; send to host</div>
-          <div class="code-box">
-            <textarea class="field" id="joinCodeOutput" readonly rows="4"></textarea>
-            <button class="copy-btn" id="copyJoinCode" onclick="copyCode('joinCodeOutput','copyJoinCode')">COPY</button>
-          </div>
-          <div class="status-row info">
-            <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
-            Waiting for host to confirm… connection will open automatically.
+      <!-- Info Panel -->
+      <div class="host-info-panel">
+        <div class="info-block">
+          <h3>💡 How to connect</h3>
+          <div class="info-step">
+            <span><b>1.</b> Open this same HTML file on your mobile/phone in Chrome or Edge</span>
+            <span><b>2.</b> Choose "Join" on the mobile device</span>
+            <span><b>3.</b> Point phone camera at the QR code</span>
+            <span><b>4.</b> Connection opens automatically</span>
           </div>
         </div>
-      </div>
 
-      <div id="localStatus"></div>
-    </div>
+        <div class="info-block" id="hostWaiting">
+          <h3>Status</h3>
+          <div class="waiting-anim">
+            <div class="dots"><span></span><span></span><span></span></div>
+            Waiting for device to scan…
+          </div>
+        </div>
 
-    <!-- MANUAL PANEL (same as local but cleaner instructions) -->
-    <div class="panel" id="panel-manual">
-      <div class="status-row info">
-        <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
-        Zero internet needed. Exchange codes by any means — WhatsApp, SMS, QR code, email, or voice.
-      </div>
-      <div class="row">
-        <button class="btn btn-accent" onclick="switchTab('local'); startHost()">
-          I'm the Host
-        </button>
-        <button class="btn btn-ghost" onclick="switchTab('local'); startJoin()">
-          I'm Joining
-        </button>
+        <div id="hostAnswerBox" style="display:none" class="info-block">
+          <h3>✅ QR Scanned!</h3>
+          <div class="notice good" style="margin-top:4px">
+            <span>📲</span><span>Device scanned the code. Establishing connection…</span>
+          </div>
+        </div>
+
+        <div id="hostErrBox" style="display:none" class="notice bad">
+          <span>⚠️</span><span id="hostErrMsg">Error</span>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- CHAT CARD -->
-  <div class="card chat-wrap" id="chatCard">
-    <div class="card-head">
-      <div class="card-title">
-        <svg viewBox="0 0 20 20" fill="var(--accent)"><path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd"/></svg>
-        Live Chat
+
+  <!-- ════════════════════════════════════
+       SCAN SCREEN
+  ════════════════════════════════════ -->
+  <div id="scanScreen">
+    <button class="back-btn" onclick="stopCamera(); goMode()">← Back</button>
+
+    <div class="notice info">
+      <span>📷</span>
+      <span>Point your camera at the QR code on the host device. Keep it steady in the frame.</span>
+    </div>
+
+    <div class="scan-area">
+      <video id="scanVideo" autoplay muted playsinline></video>
+      <div class="scan-overlay">
+        <div class="scan-frame">
+          <div class="scan-line"></div>
+        </div>
       </div>
-      <div style="display:flex;align-items:center;gap:10px">
-        <span style="font-family:var(--mono);font-size:0.65rem;color:var(--muted)" id="msgCountLabel">0 msgs</span>
-        <button class="btn btn-red" id="disconnectBtn" onclick="hangUp()" style="display:none;padding:6px 14px;font-size:0.75rem">
-          Disconnect
+    </div>
+    <div class="scan-status" id="scanStatus">🔍 Scanning for QR code…</div>
+    <div id="scanErrBox" style="display:none" class="notice bad">
+      <span>⚠️</span><span id="scanErrMsg">Camera error</span>
+    </div>
+  </div>
+
+
+  <!-- ════════════════════════════════════
+       CHAT SCREEN
+  ════════════════════════════════════ -->
+  <div id="chatScreen">
+    <div class="card">
+      <div class="chat-top">
+        <div class="chat-peer">
+          <div class="peer-avatar" id="peerAvatar">?</div>
+          <div class="peer-info">
+            <div class="peer-name" id="peerNameDisp">Connecting…</div>
+            <div class="peer-sub">● P2P · Encrypted · Offline</div>
+          </div>
+        </div>
+        <button class="btn-disc" onclick="hangUp()">Disconnect</button>
+      </div>
+      <div class="chat-msgs" id="chatMsgs">
+        <div class="empty-msgs" id="emptyMsgs">
+          <div class="big">💬</div>
+          <div>Connected! Say hello.</div>
+        </div>
+      </div>
+      <div class="send-bar">
+        <textarea class="send-ta" id="msgIn" placeholder="Type a message… (Enter to send)"
+          disabled rows="1" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        <button class="send-ta-btn" id="sendBtn" onclick="sendMsg()" disabled>
+          <svg viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/></svg>
         </button>
       </div>
-    </div>
-    <div class="peer-bar" id="peerBar">
-      <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-      Connected to <strong id="peerNameDisplay">—</strong>
-    </div>
-    <div class="chat-msgs" id="chatMsgs">
-      <div class="empty" id="emptyState">
-        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd"/></svg>
-        <div>No messages yet</div>
-        <div style="opacity:.5;font-size:.65rem">Complete connection to start chatting</div>
-      </div>
-    </div>
-    <div class="send-bar">
-      <textarea class="send-input" id="msgInput" placeholder="Type a message… (Enter to send)" disabled rows="1"
-        onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
-      <button class="send-btn" id="sendBtn" onclick="sendMsg()" disabled>
-        <svg viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/></svg>
-      </button>
     </div>
   </div>
 
 </main>
+</div>
 
 <script>
-// ─── WebRTC State ────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════
 let pc = null;
-let dc = null; // data channel
+let dc = null;
 let peerName = 'Peer';
+let myRole = null; // 'host' | 'join'
+let scanStream = null;
+let scanAnimFrame = null;
 let msgCount = 0;
-let isConnected = false;
 
-const ICE_CONFIG = {
-  iceServers: [
-    // These are STUN servers — they help with NAT traversal on local networks
-    // but don't relay data. No internet needed for same-network connections.
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' }
-  ]
-};
+// ── ICE: NO stun servers at all → pure local network ──
+const RTC_CONFIG = { iceServers: [] };
 
-// ─── Tab switching ────────────────────────────────────────────────
-function switchTab(name) {
-  ['local','manual'].forEach(t => {
-    document.getElementById('tab-'+t).classList.toggle('active', t===name);
-    document.getElementById('panel-'+t).classList.toggle('active', t===name);
+// ═══════════════════════════════════════════════════
+//  SCREEN SWITCHING
+// ═══════════════════════════════════════════════════
+function show(id) {
+  ['modeScreen','hostScreen','scanScreen','chatScreen'].forEach(s => {
+    const el = document.getElementById(s);
+    el.style.display = s === id ? 'flex' : 'none';
   });
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────
-function now() {
-  return new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit'});
+function goMode() {
+  cleanupPC();
+  document.getElementById('qrcode').innerHTML = '';
+  document.getElementById('qrHint').textContent = 'Generating connection code…';
+  document.getElementById('hostAnswerBox').style.display = 'none';
+  document.getElementById('hostWaiting').style.display = 'block';
+  document.getElementById('hostErrBox').style.display = 'none';
+  show('modeScreen');
 }
 
-function setConnected(yes, peer='') {
-  isConnected = yes;
-  peerName = peer || 'Peer';
-  document.getElementById('connBadge').className = 'conn-badge' + (yes?' live':'');
-  document.getElementById('connLabel').textContent = yes ? 'LIVE' : 'OFFLINE';
-  document.getElementById('msgInput').disabled = !yes;
-  document.getElementById('sendBtn').disabled = !yes;
-  document.getElementById('disconnectBtn').style.display = yes?'flex':'none';
-  const pb = document.getElementById('peerBar');
-  if (yes) {
-    document.getElementById('peerNameDisplay').textContent = peerName;
-    pb.classList.add('show');
-  } else {
-    pb.classList.remove('show');
+// ═══════════════════════════════════════════════════
+//  STATUS CHIP
+// ═══════════════════════════════════════════════════
+function setStatus(text, on = false) {
+  document.getElementById('statusLabel').textContent = text;
+  document.getElementById('statusChip').className = 'status-chip' + (on ? ' on' : '');
+}
+
+// ═══════════════════════════════════════════════════
+//  HOST FLOW
+// ═══════════════════════════════════════════════════
+async function goHost() {
+  myRole = 'host';
+  show('hostScreen');
+  setStatus('HOSTING…');
+  await generateOffer();
+}
+
+async function generateOffer() {
+  cleanupPC();
+  document.getElementById('qrcode').innerHTML = '';
+  document.getElementById('qrHint').textContent = 'Building connection code…';
+  document.getElementById('hostAnswerBox').style.display = 'none';
+  document.getElementById('hostWaiting').style.display = 'block';
+  document.getElementById('hostErrBox').style.display = 'none';
+
+  try {
+    pc = new RTCPeerConnection(RTC_CONFIG);
+
+    // Data channel — host creates it
+    dc = pc.createDataChannel('dropchat');
+    setupDC(dc);
+
+    pc.onicecandidate = () => {}; // we wait for gathering complete
+
+    pc.oniceconnectionstatechange = () => {
+      const s = pc.iceConnectionState;
+      if (s === 'connected' || s === 'completed') {
+        openChat();
+      }
+      if (s === 'failed' || s === 'disconnected' || s === 'closed') {
+        showHostErr('Connection lost. Regenerate and try again.');
+      }
+    };
+
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+
+    // Wait for ICE gathering
+    await gatherICE(pc);
+
+    const payload = JSON.stringify({
+      t: 'offer',
+      sdp: pc.localDescription.sdp,
+      type: pc.localDescription.type
+    });
+
+    // Compress to base64
+    const encoded = btoa(unescape(encodeURIComponent(payload)));
+
+    // Render QR
+    renderQR(encoded);
+    document.getElementById('qrHint').textContent = 'QR ready — have the other device scan it';
+
+  } catch (e) {
+    showHostErr('Failed to create offer: ' + e.message);
   }
 }
 
-function addMsg(text, type='them', name=null) {
-  document.getElementById('emptyState')?.remove();
-  const wrap = document.createElement('div');
-  wrap.className = 'msg ' + type;
+function regenerateOffer() {
+  generateOffer();
+}
+
+function renderQR(data) {
+  document.getElementById('qrcode').innerHTML = '';
+  new QRCode(document.getElementById('qrcode'), {
+    text: data,
+    width: 220, height: 220,
+    colorDark: '#000000',
+    colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.M
+  });
+}
+
+function showHostErr(msg) {
+  document.getElementById('hostErrMsg').textContent = msg;
+  document.getElementById('hostErrBox').style.display = 'flex';
+}
+
+// Host receives answer from joiner (via QR scan result posted back)
+async function hostReceiveAnswer(answerData) {
+  try {
+    const parsed = JSON.parse(decodeURIComponent(escape(atob(answerData))));
+    if (parsed.t !== 'answer') return;
+
+    await pc.setRemoteDescription({ type: parsed.type, sdp: parsed.sdp });
+
+    document.getElementById('hostAnswerBox').style.display = 'flex';
+    document.getElementById('hostWaiting').style.display = 'none';
+    setStatus('CONNECTING…');
+
+  } catch(e) {
+    showHostErr('Invalid answer data: ' + e.message);
+  }
+}
+
+// ═══════════════════════════════════════════════════
+//  JOIN / SCAN FLOW
+// ═══════════════════════════════════════════════════
+async function goScan() {
+  myRole = 'join';
+  show('scanScreen');
+  setStatus('SCANNING…');
+  document.getElementById('scanErrBox').style.display = 'none';
+  document.getElementById('scanStatus').textContent = '🔍 Scanning for QR code…';
+  await startCamera();
+}
+
+async function startCamera() {
+  try {
+    scanStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 640 } }
+    });
+    const video = document.getElementById('scanVideo');
+    video.srcObject = scanStream;
+    video.play();
+    video.onloadedmetadata = () => scanLoop();
+  } catch (e) {
+    document.getElementById('scanErrMsg').textContent = 'Camera error: ' + e.message + '. Make sure you allow camera permission.';
+    document.getElementById('scanErrBox').style.display = 'flex';
+  }
+}
+
+function stopCamera() {
+  if (scanAnimFrame) { cancelAnimationFrame(scanAnimFrame); scanAnimFrame = null; }
+  if (scanStream) { scanStream.getTracks().forEach(t => t.stop()); scanStream = null; }
+}
+
+function scanLoop() {
+  const video = document.getElementById('scanVideo');
+  if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+    scanAnimFrame = requestAnimationFrame(scanLoop);
+    return;
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0);
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const code = jsQR(imageData.data, imageData.width, imageData.height, {
+    inversionAttempts: 'dontInvert'
+  });
+
+  if (code) {
+    stopCamera();
+    document.getElementById('scanStatus').textContent = '✅ QR detected! Connecting…';
+    processScannedData(code.data);
+  } else {
+    scanAnimFrame = requestAnimationFrame(scanLoop);
+  }
+}
+
+async function processScannedData(raw) {
+  try {
+    const parsed = JSON.parse(decodeURIComponent(escape(atob(raw))));
+    if (parsed.t !== 'offer') throw new Error('Not an offer QR');
+
+    cleanupPC();
+    pc = new RTCPeerConnection(RTC_CONFIG);
+
+    // Data channel comes from host
+    pc.ondatachannel = e => {
+      dc = e.channel;
+      setupDC(dc);
+    };
+
+    pc.oniceconnectionstatechange = () => {
+      const s = pc.iceConnectionState;
+      if (s === 'connected' || s === 'completed') openChat();
+      if (s === 'failed' || s === 'disconnected' || s === 'closed') {
+        document.getElementById('scanErrMsg').textContent = 'Connection failed. Go back and try again.';
+        document.getElementById('scanErrBox').style.display = 'flex';
+      }
+    };
+
+    await pc.setRemoteDescription({ type: parsed.type, sdp: parsed.sdp });
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    await gatherICE(pc);
+
+    const answerPayload = JSON.stringify({
+      t: 'answer',
+      sdp: pc.localDescription.sdp,
+      type: pc.localDescription.type
+    });
+    const encoded = btoa(unescape(encodeURIComponent(answerPayload)));
+
+    // Show answer QR for host to scan (secondary confirmation screen)
+    showAnswerQR(encoded);
+
+  } catch(e) {
+    document.getElementById('scanErrMsg').textContent = 'QR error: ' + e.message;
+    document.getElementById('scanErrBox').style.display = 'flex';
+    document.getElementById('scanStatus').textContent = '❌ Failed to read QR';
+  }
+}
+
+function showAnswerQR(encoded) {
+  // Replace scan area with answer QR + instructions
+  const scan = document.getElementById('scanScreen');
+
+  // remove old answer area if any
+  document.getElementById('answerQRSection')?.remove();
+
+  const div = document.createElement('div');
+  div.id = 'answerQRSection';
+  div.style.cssText = 'display:flex;flex-direction:column;gap:14px;align-items:center';
+  div.innerHTML = `
+    <div class="notice good" style="width:100%">
+      <span>✅</span>
+      <span><strong>Offer scanned!</strong> Now the host needs to scan this answer QR code with their camera, OR click "Enter Code Manually" below.</span>
+    </div>
+    <div style="background:white;padding:14px;border-radius:14px;box-shadow:0 0 30px rgba(0,229,255,.2)">
+      <div id="answerQRCode"></div>
+    </div>
+    <div style="font-family:var(--mono);font-size:.7rem;color:var(--muted);text-align:center">
+      Show this to the host device
+    </div>
+    <button onclick="toggleManualAnswer('${encoded}')" style="background:var(--s2);border:1px solid var(--border2);color:var(--muted);border-radius:9px;padding:9px 16px;font-family:var(--mono);font-size:.68rem;cursor:pointer">
+      ⌨️ Or: Host enters code manually
+    </button>
+    <div id="manualAnswerSection" style="display:none;width:100%;flex-direction:column;gap:8px">
+      <div style="position:relative">
+        <textarea id="answerCodeText" class="field" readonly style="font-size:.58rem;min-height:70px;width:100%;padding:10px;background:var(--s2);border:1px solid var(--border2);border-radius:9px;color:var(--text);font-family:var(--mono);resize:none;outline:none" onclick="this.select()">${encoded}</textarea>
+        <button onclick="doCopyId('answerCodeText')" style="position:absolute;right:8px;top:7px;background:var(--s1);border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:3px 9px;font-family:var(--mono);font-size:.62rem;cursor:pointer">COPY</button>
+      </div>
+      <div style="font-family:var(--mono);font-size:.68rem;color:var(--muted);text-align:center">Paste this into the host's "Manual" field</div>
+    </div>
+  `;
+  scan.appendChild(div);
+
+  new QRCode(document.getElementById('answerQRCode'), {
+    text: encoded, width: 200, height: 200,
+    colorDark: '#000000', colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.M
+  });
+
+  setStatus('ANSWER READY');
+
+  // Also show a manual field on HOST side for the answer
+  revealHostManualField(encoded);
+}
+
+function toggleManualAnswer(encoded) {
+  const s = document.getElementById('manualAnswerSection');
+  s.style.display = s.style.display === 'flex' ? 'none' : 'flex';
+}
+
+// Show manual paste field on HOST side (for cases where 2nd QR scan isn't practical)
+function revealHostManualField(answerEncoded) {
+  // Only relevant if we ARE the host — but since this runs on joiner, we skip
+  // The host has a separate "scan answer QR" OR "paste code" approach
+}
+
+// ═══════════════════════════════════════════════════
+//  HOST: also allow scanning the answer QR
+// ═══════════════════════════════════════════════════
+function hostScanAnswer() {
+  // Add a scan button to host screen
+  const btn = document.getElementById('hostScanAnswerBtn');
+  if (!btn) return;
+  // start second camera scan
+}
+
+// Simpler: show manual paste on host after QR shown
+function setupHostManualPaste() {
+  const box = document.getElementById('hostAnswerPasteBox');
+  if (box) box.style.display = 'flex';
+}
+
+// Called when host pastes the answer code manually
+async function hostPasteAnswer() {
+  const val = document.getElementById('hostAnswerPasteIn')?.value?.trim();
+  if (!val) return alert('Paste the answer code first!');
+  await hostReceiveAnswer(val);
+}
+
+// ═══════════════════════════════════════════════════
+//  DATA CHANNEL & CHAT
+// ═══════════════════════════════════════════════════
+function setupDC(channel) {
+  channel.onopen = () => {
+    // Send our name
+    channel.send(JSON.stringify({ k: 'name', v: document.getElementById('myName').value || 'User' }));
+    openChat();
+  };
+
+  channel.onmessage = e => {
+    try {
+      const d = JSON.parse(e.data);
+      if (d.k === 'name') {
+        peerName = d.v || 'Peer';
+        document.getElementById('peerNameDisp').textContent = peerName;
+        document.getElementById('peerAvatar').textContent = peerName.charAt(0).toUpperCase();
+        addMsg(`${peerName} joined`, 'sys');
+        return;
+      }
+      if (d.k === 'msg') { addMsg(d.v, 'them', d.n); return; }
+    } catch(e) { addMsg(e.data, 'them'); }
+  };
+
+  channel.onclose = () => {
+    addMsg('Connection closed.', 'sys');
+    setStatus('OFFLINE');
+    document.getElementById('sendBtn').disabled = true;
+    document.getElementById('msgIn').disabled = true;
+  };
+}
+
+function openChat() {
+  stopCamera();
+  show('chatScreen');
+  setStatus('LIVE', true);
+  document.getElementById('msgIn').disabled = false;
+  document.getElementById('sendBtn').disabled = false;
+
+  const myN = document.getElementById('myName').value || 'Me';
+  if (!peerName || peerName === 'Peer') {
+    document.getElementById('peerNameDisp').textContent = 'Connected';
+    document.getElementById('peerAvatar').textContent = '●';
+  }
+  // Send name if dc is open
+  if (dc && dc.readyState === 'open') {
+    dc.send(JSON.stringify({ k: 'name', v: myN }));
+  }
+}
+
+function sendMsg() {
+  const input = document.getElementById('msgIn');
+  const text = input.value.trim();
+  if (!text || !dc || dc.readyState !== 'open') return;
+  const myN = document.getElementById('myName').value || 'Me';
+  dc.send(JSON.stringify({ k: 'msg', v: text, n: myN }));
+  addMsg(text, 'me');
+  input.value = ''; autoResize(input);
+}
+
+function addMsg(text, type = 'them', name = null) {
+  document.getElementById('emptyMsgs')?.remove();
+  const wrap = document.createElement('div'); wrap.className = 'msg ' + type;
   const b = document.createElement('div'); b.className = 'bubble'; b.textContent = text;
   wrap.appendChild(b);
   if (type !== 'sys') {
     const m = document.createElement('div'); m.className = 'msg-meta';
-    m.textContent = (name||(type==='me'?document.getElementById('myName').value||'Me':peerName))+' · '+now();
+    const n = name || (type === 'me' ? (document.getElementById('myName').value || 'Me') : peerName);
+    m.textContent = n + ' · ' + new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit'});
     wrap.appendChild(m);
   }
   const c = document.getElementById('chatMsgs');
   c.appendChild(wrap);
   c.scrollTop = c.scrollHeight;
   msgCount++;
-  document.getElementById('msgCountLabel').textContent = msgCount + ' msg' + (msgCount!==1?'s':'');
 }
 
-function showStatus(id, text, type='info') {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.innerHTML = `<div class="status-row ${type}" style="margin-top:4px">
-    <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
-      <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
-    </svg>
-    ${text}
-  </div>`;
+function hangUp() {
+  if (dc) { try{dc.close();}catch(e){} }
+  if (pc) { try{pc.close();}catch(e){} }
+  dc = null; pc = null;
+  setStatus('OFFLINE');
+  goMode();
 }
 
-function copyCode(fieldId, btnId) {
-  const val = document.getElementById(fieldId).value;
-  navigator.clipboard.writeText(val).then(() => {
-    const b = document.getElementById(btnId);
-    b.textContent = 'COPIED!'; b.classList.add('copied');
-    setTimeout(()=>{ b.textContent='COPY'; b.classList.remove('copied'); }, 2000);
-  });
-}
-
-// ─── Create peer connection ────────────────────────────────────────
-function createPC() {
-  if (pc) { try{ pc.close(); }catch(e){} }
-  pc = new RTCPeerConnection(ICE_CONFIG);
-
-  pc.oniceconnectionstatechange = () => {
-    const s = pc.iceConnectionState;
-    if (s === 'connected' || s === 'completed') {
-      showStatus('localStatus','ICE connected ✓','success');
-    }
-    if (s === 'disconnected' || s === 'failed' || s === 'closed') {
-      onHangUp();
-    }
-  };
-  return pc;
-}
-
-// ─── HOST FLOW ────────────────────────────────────────────────────
-async function startHost() {
-  document.getElementById('hostBtn').disabled = true;
-  document.getElementById('joinBtn').disabled = true;
-  document.getElementById('hostCodeArea').style.display = 'flex';
-  document.getElementById('joinCodeArea').style.display = 'none';
-
-  createPC();
-
-  // Create data channel (host creates it)
-  dc = pc.createDataChannel('chat');
-  setupDC(dc);
-
-  // Collect all ICE candidates then produce final offer
-  const offer = await pc.createOffer();
-  await pc.setLocalDescription(offer);
-
-  // Wait for ICE gathering to complete
-  await waitForICE(pc);
-
-  document.getElementById('hostCodeOutput').value = btoa(JSON.stringify(pc.localDescription));
-  showStatus('localStatus','Offer ready — share the code above','info');
-}
-
-async function hostFinish() {
-  const raw = document.getElementById('hostAnswerInput').value.trim();
-  if (!raw) { alert('Paste the answer code first!'); return; }
-  try {
-    const answer = JSON.parse(atob(raw));
-    await pc.setRemoteDescription(new RTCSessionDescription(answer));
-    showStatus('localStatus','Answer accepted — connecting…','warning');
-    document.getElementById('hostFinishBtn').disabled = true;
-  } catch(e) {
-    showStatus('localStatus','Invalid code. Make sure you pasted the full answer.','error');
-  }
-}
-
-// ─── JOIN FLOW ────────────────────────────────────────────────────
-async function startJoin() {
-  document.getElementById('hostBtn').disabled = true;
-  document.getElementById('joinBtn').disabled = true;
-  document.getElementById('joinCodeArea').style.display = 'flex';
-  document.getElementById('hostCodeArea').style.display = 'none';
-  createPC();
-
-  // Data channel comes from host — listen for it
-  pc.ondatachannel = e => {
-    dc = e.channel;
-    setupDC(dc);
-  };
-}
-
-async function joinGenAnswer() {
-  const raw = document.getElementById('joinOfferInput').value.trim();
-  if (!raw) { alert('Paste the host code first!'); return; }
-  try {
-    const offer = JSON.parse(atob(raw));
-    await pc.setRemoteDescription(new RTCSessionDescription(offer));
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
-    await waitForICE(pc);
-    document.getElementById('joinCodeOutput').value = btoa(JSON.stringify(pc.localDescription));
-    document.getElementById('joinAnswerArea').style.display = 'flex';
-    showStatus('localStatus','Answer generated — waiting for host…','warning');
-  } catch(e) {
-    showStatus('localStatus','Invalid offer code. Try again.','error');
-  }
-}
-
-// ─── DATA CHANNEL SETUP ───────────────────────────────────────────
-function setupDC(channel) {
-  channel.onopen = () => {
-    setConnected(true, '');
-    addMsg('Connection established! 🎉', 'sys');
-    // Exchange names
-    channel.send(JSON.stringify({type:'name', name: document.getElementById('myName').value || 'User'}));
-    showStatus('localStatus', 'Connected!', 'success');
-    document.getElementById('disconnectBtn').style.display = 'flex';
-  };
-
-  channel.onmessage = e => {
-    try {
-      const data = JSON.parse(e.data);
-      if (data.type === 'name') {
-        peerName = data.name || 'Peer';
-        document.getElementById('peerNameDisplay').textContent = peerName;
-        addMsg(`${peerName} joined the chat`, 'sys');
-        return;
-      }
-      if (data.type === 'msg') {
-        addMsg(data.text, 'them', data.name);
-        return;
-      }
-    } catch(err) {
-      // plain text fallback
-      addMsg(e.data, 'them');
-    }
-  };
-
-  channel.onclose = () => onHangUp();
-  channel.onerror = err => {
-    showStatus('localStatus','Channel error: ' + err.message, 'error');
-  };
-}
-
-// ─── ICE gathering wait ────────────────────────────────────────────
-function waitForICE(pc) {
+// ═══════════════════════════════════════════════════
+//  UTILITIES
+// ═══════════════════════════════════════════════════
+function gatherICE(peerConn) {
   return new Promise(resolve => {
-    if (pc.iceGatheringState === 'complete') { resolve(); return; }
-    const check = () => {
-      if (pc.iceGatheringState === 'complete') {
-        pc.removeEventListener('icegatheringstatechange', check);
+    if (peerConn.iceGatheringState === 'complete') { resolve(); return; }
+    const h = () => {
+      if (peerConn.iceGatheringState === 'complete') {
+        peerConn.removeEventListener('icegatheringstatechange', h);
         resolve();
       }
     };
-    pc.addEventListener('icegatheringstatechange', check);
-    // Timeout fallback after 4 seconds
-    setTimeout(resolve, 4000);
+    peerConn.addEventListener('icegatheringstatechange', h);
+    setTimeout(resolve, 5000); // 5s fallback
   });
 }
 
-// ─── SEND ─────────────────────────────────────────────────────────
-function sendMsg() {
-  const input = document.getElementById('msgInput');
-  const text = input.value.trim();
-  if (!text || !dc || dc.readyState !== 'open') return;
-  dc.send(JSON.stringify({ type:'msg', text, name: document.getElementById('myName').value||'Me' }));
-  addMsg(text, 'me');
-  input.value = ''; autoResize(input);
+function cleanupPC() {
+  if (dc) { try{dc.close();}catch(e){} dc = null; }
+  if (pc) { try{pc.close();}catch(e){} pc = null; }
 }
 
 function handleKey(e) {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); }
 }
-
 function autoResize(el) {
   el.style.height = 'auto';
   el.style.height = Math.min(el.scrollHeight, 120) + 'px';
 }
-
-// ─── DISCONNECT ───────────────────────────────────────────────────
-function hangUp() {
-  if (dc) { try{dc.close();}catch(e){} }
-  if (pc) { try{pc.close();}catch(e){} }
-  onHangUp();
+function doCopyId(id) {
+  const el = document.getElementById(id);
+  el.select();
+  navigator.clipboard.writeText(el.value).then(() => {}).catch(() => document.execCommand('copy'));
 }
 
-function onHangUp() {
-  setConnected(false);
-  addMsg('Connection closed.','sys');
-  dc = null; pc = null;
-  document.getElementById('hostBtn').disabled = false;
-  document.getElementById('joinBtn').disabled = false;
-  document.getElementById('hostCodeArea').style.display = 'none';
-  document.getElementById('joinCodeArea').style.display = 'none';
-  document.getElementById('hostAnswerInput').value = '';
-  document.getElementById('joinOfferInput').value = '';
-}
+// ═══════════════════════════════════════════════════
+//  INIT — add manual paste field to host screen
+// ═══════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  // Inject a manual paste section into host info panel
+  const hap = document.getElementById('hostWaiting');
+  const manualDiv = document.createElement('div');
+  manualDiv.id = 'hostAnswerPasteBox';
+  manualDiv.style.cssText = 'display:none;flex-direction:column;gap:10px;margin-top:12px';
+  manualDiv.innerHTML = `
+    <div style="font-family:var(--mono);font-size:.65rem;letter-spacing:.08em;color:var(--muted)">PASTE ANSWER CODE FROM JOINER</div>
+    <div style="position:relative">
+      <textarea id="hostAnswerPasteIn" placeholder="Paste the joiner's answer code here…"
+        style="width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:9px;
+               padding:10px 13px;font-family:var(--mono);font-size:.68rem;color:var(--text);
+               resize:none;outline:none;min-height:65px;line-height:1.5"></textarea>
+    </div>
+    <button onclick="hostPasteAnswer()" style="background:var(--green);color:#000;border:none;
+      border-radius:9px;padding:10px 18px;font-family:var(--sans);font-weight:700;
+      font-size:.82rem;cursor:pointer;transition:all .2s">
+      ✅ Connect with this code
+    </button>
+  `;
+  document.getElementById('hostInfoArea')?.appendChild(manualDiv) ||
+    document.querySelector('.host-info-panel')?.appendChild(manualDiv);
+
+  // Show manual paste after 3 seconds waiting
+  setTimeout(() => {
+    if (document.getElementById('hostScreen').style.display === 'flex') {
+      document.getElementById('hostAnswerPasteBox').style.display = 'flex';
+    }
+  }, 3000);
+
+  show('modeScreen');
+});
 </script>
 </body>
 </html>
